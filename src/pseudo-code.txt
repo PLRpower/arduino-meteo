@@ -1,0 +1,131 @@
+Variables :
+    structure Bouton :
+        etat
+        etat5s
+        dernierAppui
+        pin
+
+    enumération Mode :
+        MODE_STANDARD
+        MODE_ECONOMIQUE
+        MODE_MAINTENANCE
+        MODE_CONFIG
+
+    enumération CouleurLed :
+        ROUGE
+        VERT
+        BLEU
+        JAUNE
+        ORANGE
+        ETEINT
+
+    boutonRouge (volatile à cause de l'interruption)
+    boutonVert (volatile à cause de l'interruption)
+    led
+    modeActuel
+    modePrecedent
+
+Fonction setup() :
+    Initialiser communication série à 9600 bauds (pour la configuration)
+    Configurer la led et les boutons
+
+    Appel fonction démarrage()
+
+    Si le bouton rouge est pressé au démarrage :
+        Appel fonction mettreModeConfiguration()
+
+    Sinon :
+        Appel fonction mettreModeStandard()
+
+Fonction loop() :
+    Appel fonction obtenirEtatsBoutons()
+
+    Si le bouton rouge est pressé pendant 5 secondes :
+        Si le mode actuel est MODE_MAINTENANCE :
+            Appel fonction mettreModePrecedent()
+        Sinon :
+            Appel fonction mettreModeMaintenance()
+
+    Si le bouton vert est pressé pendant 5 secondes :
+        Si le mode actuel est MODE_ECONOMIQUE :
+            Appel fonction mettreModeStandard()
+        Sinon si le mode actuel est MODE_STANDARD :
+            Appel fonction mettreModeEconomique()
+
+    Appel fonction acquerirDonnees()
+
+    Appel fonction sauvegardeDonnees()
+
+Fonction demarrage() :
+    Faire clignoter la led en vert 5 fois
+    Appel fonction obtenirEtatsBoutons()
+    Si le bouton rouge est pressé :
+        retourner 1
+    Sinon :
+        retourner 0
+
+
+Fontion obtenirEtatsBoutons() :
+    Si le bouton rouge est pressé et que temps actuel - dernierAppuiRouge > 5 secondes :
+        Mettre l'état5s du bouton rouge à 1
+    Sinon
+        Mettre l'état5s du bouton rouge à 0
+
+    Si le bouton vert est pressé et que temps actuel - dernierAppuiVert > 5 secondes :
+        Mettre l'état5s du bouton vert à 1
+    Sinon
+        Mettre l'état5s du bouton vert à 0
+
+fonction mettreModeStandard() :
+    Mettre la led en vert
+    Mettre modeActuel à MODE_STANDARD
+
+fonction mettreModeEconomique() :
+    Mettre la led en bleu
+    Mettre modeActuel à MODE_ECONOMIQUE
+
+fonction mettreModeMaintenance() :
+    Mettre la led en orange
+    Mettre modePrecedent à modeActuel
+    Mettre modeActuel à MODE_MAINTENANCE
+
+fonction mettreModeConfiguration() :
+    Mettre la led en jaune
+    Permettre la modification des paramètres du système
+    Tant que le temps actuel - débutModeConfig < 30 minutes :
+        Appel fonction obtenirEtatsBoutons()
+        Si le bouton rouge ou vert ou le terminal est pressé :
+            débutModeConfig = temps actuel
+
+fonction mettreModePrecedent() :
+    Mettre modeActuel à modePrecedent
+
+fonction acquerirDonnees() :
+    Lire les données du GPS
+    Si les données ne sont pas récupérées :
+        Appel fonction erreur(GPS)
+    Sinon :
+        Lire les données des capteurs
+        Si les données ne sont pas récupérées :
+            Appel fonction erreur(CAPTEURS)
+        Sinon :
+        Lire les données de l'horloge RTC
+        Si les données ne sont pas récupérées :
+            Appel fonction erreur(RTC)
+        Sinon :
+            Si les données sont cohérentes :
+                retourner les données
+            Sinon :
+                Appel fonction erreur(DONNEES)
+
+fonction sauvegardeDonnees(données) :
+    Si le mode actuel n'est pas MODE_MAINTENANCE :
+        Sauvegarder les données dans la carte SD :
+        Si la carte SD est pleine :
+            Appel fonction erreur(SD PLEINE)
+        Si les données ne sont pas sauvegardées :
+            Appel fonction erreur(LECTURE/ECRITURE)
+
+fonction erreur(codeErreur) :
+    Obtenir couleurLed correspondant au codeErreur
+    Faire clignoter la led en couleurLed
