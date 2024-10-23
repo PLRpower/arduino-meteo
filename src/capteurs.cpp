@@ -4,7 +4,7 @@
 unsigned char buffer[64];
 int count=0;
 const int lightPin = A0;
-int sensorValue = 0;
+int lightSensorValue = 0;
 
 void acquerirDonnees() {
   // Acquérir les données
