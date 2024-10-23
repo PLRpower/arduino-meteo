@@ -9,6 +9,7 @@ void acquerirDonnees() {
     int lightData = analogRead(A0);
 }
 
+  // Acquisition données capteur
 
 void clearBufferArray() {
     for (int i=0; i<count;i++) {
