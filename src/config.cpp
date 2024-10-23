@@ -63,7 +63,7 @@ void afficherParametres(Config& config) {
     }
 }
 
-void setModeConfig(ChainableLED& led, Config& config) {
+void setModeConfig(ChainableLED& led, Config& config, DS1307& clock) {
     unsigned long startMillis = millis();
     Serial.println("Début du mode configuration.");
     setLedColor(Jaune, led);
@@ -72,8 +72,6 @@ void setModeConfig(ChainableLED& led, Config& config) {
         if (Serial.available() > 0) {
             startMillis = millis();  // Réinitialisation du timer
             String input = Serial.readStringUntil('\n');
-            input.trim(); // Supprimer les espaces inutiles
-
             if (input == "RESET") {
                 EEPROM.put(0, Config()); // Sauvegarde des paramètres par défaut de la structure dans l'EEPROM
                 config = Config(); // Réinitialisation des paramètres
@@ -88,7 +86,55 @@ void setModeConfig(ChainableLED& led, Config& config) {
                 if (delimiterIndex != -1) {
                     String command = input.substring(0, delimiterIndex);
                     String value = input.substring(delimiterIndex + 1);
-                    applyCommand(command, value, config);
+                    if (command == "CLOCK") {
+                        int hours = value.substring(0, value.indexOf(':')).toInt();
+                        int minutes = value.substring(value.indexOf(':') + 1, value.lastIndexOf(':')).toInt();
+                        int seconds = value.substring(value.lastIndexOf(':') + 1).toInt();
+                        Serial.println(hours);
+                        Serial.println(minutes);
+                        Serial.println(seconds);
+                        if(hours >= 0 && hours <= 23 && minutes >= 0 && minutes <= 59 && seconds >= 0 && seconds <= 59) {
+                            clock.fillByHMS(hours, minutes, seconds);
+                            clock.setTime();
+                            Serial.println("Heure du système mise à jour.");
+                        } else {
+                            Serial.println("Erreur, veuillez saisir des valeurs entre 0 et 23 pour les heures, entre 0 et 59 pour les minutes et les secondes, au format hh:mm:ss.");
+                        }
+                    } else if (command == "DATE") {
+                        int day = value.substring(0, value.indexOf('/')).toInt();
+                        int month = value.substring(value.indexOf('/') + 1, value.lastIndexOf(':')).toInt();
+                        int year = value.substring(value.lastIndexOf('/') + 1).toInt();
+                        if(day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 2000 && year <= 2099) {
+                            clock.fillByYMD(year, month, day);
+                            clock.setTime();
+                            Serial.println("Date du système mise à jour.");
+                        } else {
+                            Serial.println("Erreur, veuillez saisir des valeurs entre 1 et 31 pour le jour, entre 1 et 12 pour le mois et entre 2000 et 2099 pour l'année, au format jj/mm/aaaa.");
+                        }
+                        clock.fillByYMD(2017,1,19);//Jan 19,2013
+                        clock.setTime();
+                    } else if (command == "DAY") {
+                        if (value == "MON") {
+                            clock.fillDayOfWeek(MON);
+                        } else if (value == "TUE") {
+                            clock.fillDayOfWeek(TUE);
+                        } else if (value == "WED") {
+                            clock.fillDayOfWeek(WED);
+                        } else if (value == "THU") {
+                            clock.fillDayOfWeek(THU);
+                        } else if (value == "FRI") {
+                            clock.fillDayOfWeek(FRI);
+                        } else if (value == "SAT") {
+                            clock.fillDayOfWeek(SAT);
+                        } else if (value == "SUN") {
+                            clock.fillDayOfWeek(SUN);
+                        } else {
+                            Serial.println("Erreur, veuillez saisir un jour de la semaine valide (MON, TUE, WED, THU, FRI, SAT, SUN)");
+                        }
+                        clock.setTime();
+                    } else {
+                        applyCommand(command, value, config);
+                    }
                 } else {
                     Serial.println("Erreur, commande incorrecte.");
                 }

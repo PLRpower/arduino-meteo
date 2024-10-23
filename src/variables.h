@@ -1,6 +1,7 @@
 #ifndef MODES_H
 #define MODES_H
 #include <ChainableLED.h>
+#include <DS1307.h>
 
 struct Parameter {
     int value;       // Valeur actuelle du paramètre
@@ -44,7 +45,7 @@ void setPreviousMode(ChainableLED& led, Mode& currentMode);
 void setModeStandard(ChainableLED& led, Mode& currentMode);
 void setModeEconomique(ChainableLED& led, Mode& currentMode);
 void setModeMaintenance(ChainableLED& led, Mode& currentMode);
-void setModeConfig(ChainableLED& led, Config& config);
+void setModeConfig(ChainableLED& led, Config& config, DS1307& clock);
 bool demarrage(Button& redButton, ChainableLED& led);
 void acquerirDonnees();
 void sauvegarderDonnees(const Mode& currentMode);
