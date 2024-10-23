@@ -40,9 +40,3 @@ void acquisition_donnee_gps() {
 void acquisition_donnee_temperature() {
 
 }
-
-void sauvegarderDonnees(const Mode& currentMode) {
-    if(currentMode != MODE_MAINTENANCE) {
-        // Sauvegarde des données
-    }
-}
