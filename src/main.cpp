@@ -7,7 +7,7 @@ Button greenButton = {false, false, 0, 3};
 ChainableLED led(7, 8, 1);
 Mode currentMode;
 Config config;
-DS1307 clock;//define a object of DS1307 class
+DS1307 clock;
 
 void printTime()
 {
@@ -18,36 +18,34 @@ void printTime()
     Serial.print(":");
     Serial.print(clock.second, DEC);
     Serial.print("  ");
-    Serial.print(clock.month, DEC);
-    Serial.print("/");
     Serial.print(clock.dayOfMonth, DEC);
     Serial.print("/");
-    Serial.print(clock.year, DEC);
+    Serial.print(clock.month, DEC);
+    Serial.print("/");
+    Serial.print(clock.year + 2000, DEC);
     Serial.print(" ");
-    Serial.print(clock.dayOfMonth);
-    Serial.print("*");
-    switch (clock.dayOfWeek)// Friendly printout the weekday
+    switch (clock.dayOfWeek)
     {
         case MON:
-            Serial.print("MON");
+            Serial.print("LUN");
         break;
         case TUE:
-            Serial.print("TUE");
+            Serial.print("MAR");
         break;
         case WED:
-            Serial.print("WED");
+            Serial.print("MER");
         break;
         case THU:
-            Serial.print("THU");
+            Serial.print("JEU");
         break;
         case FRI:
-            Serial.print("FRI");
+            Serial.print("VEN");
         break;
         case SAT:
-            Serial.print("SAT");
+            Serial.print("SAM");
         break;
         case SUN:
-            Serial.print("SUN");
+            Serial.print("DIM");
         break;
     }
     Serial.println(" ");
