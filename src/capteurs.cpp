@@ -3,6 +3,8 @@
 
 unsigned char buffer[64];
 int count=0;
+const int lightPin = A0;
+int sensorValue = 0;
 
 void acquerirDonnees() {
   // Acquérir les données
@@ -18,7 +20,7 @@ void clearBufferArray()                     // function to clear buffer array
   }                      // clear all index of array with command NULL
 }
 
-  void acquisition_donnee_capteurs(){
+void acquisition_donnee_gps() {
   SoftwareSerial SoftSerial(2, 3);
   unsigned char buffer[64];                   // buffer array for data receive over serial port
   int count=0;                                // counter for buffer array
@@ -36,9 +38,18 @@ void clearBufferArray()                     // function to clear buffer array
     count = 0;                                  // set counter of while loop to zero
   }
   if (Serial.available())                 // if data is available on hardware serial port ==> data is coming from PC or notebook
+  {
     SoftSerial.write(Serial.read());        // write it to the SoftSerial shield
+  }
 }
 
+void acquisition_donnee_light() {
+  analogRead(lightPin);
+}
+
+void acquisition_donnee_temperature() {
+
+}
 
 
 
