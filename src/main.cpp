@@ -1,20 +1,33 @@
 #include <Arduino.h>
+#include <EEPROM.h>
+#include <Seeed_BME280.h>
+#include <DS1307.h>
+#include <SoftwareSerial.h>
+#include <SD.h>
 #include "variables.h"
-#include "DS1307.h"
 
 Button redButton = {false, false, 0, 2};
 Button greenButton = {false, false, 0, 3};
 ChainableLED led(7, 8, 1);
+SoftwareSerial gps(5, 6);
+DS1307 clock;
+BME280 sensor;
 Mode currentMode;
 Config config;
-DS1307 clock;
+
+int fileNumber = 0;
+unsigned long startTimer = millis();
 
 void setup() {
+    EEPROM.get(0, config);
     Serial.begin(9600);
+    gps.begin(9600);
+    clock.begin();
+    SD.begin(4);
     led.init();
+    sensor.init();
     pinMode(redButton.pin, INPUT_PULLUP);
     pinMode(greenButton.pin, INPUT_PULLUP);
-    clock.begin();
 
     if(demarrage(redButton, led)) {
         setModeConfig(led, config, clock);
@@ -39,7 +52,7 @@ void loop() {
         resetButton(greenButton);
     }
 
-    acquerirDonnees();
+    String data = acquerirDonnees(config, clock, sensor, gps, currentMode, startTimer, fileNumber);
 
-    sauvegarderDonnees(currentMode);
+    Serial.print(data);
 }

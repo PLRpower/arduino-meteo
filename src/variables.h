@@ -2,6 +2,8 @@
 #define MODES_H
 #include <ChainableLED.h>
 #include <DS1307.h>
+#include <Seeed_BME280.h>
+#include <SoftwareSerial.h>
 
 struct Parameter {
     int value;       // Valeur actuelle du paramètre
@@ -47,7 +49,8 @@ void setModeEconomique(ChainableLED& led, Mode& currentMode);
 void setModeMaintenance(ChainableLED& led, Mode& currentMode);
 void setModeConfig(ChainableLED& led, Config& config, DS1307& clock);
 bool demarrage(Button& redButton, ChainableLED& led);
-void acquerirDonnees();
-void sauvegarderDonnees(const Mode& currentMode);
+String acquerirDonnees(Config& config, DS1307& clock, BME280& sensor, SoftwareSerial& gps, Mode& currentMode, unsigned long& startTimer, int& fileNumber);
+void sauvegarderDonnees(String& data, DS1307& clock, Config& config, int& fileNumber);
+
 
 #endif

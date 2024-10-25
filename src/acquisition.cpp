@@ -1,42 +1,52 @@
-#include "variables.h"
+#include <SD.h>
+#include <Seeed_BME280.h>
 #include <SoftwareSerial.h>
+#include "variables.h"
 
-unsigned char buffer[64];
-int count=0;
-int sensorValue = 0;
+String acquerirDonnees(Config& config, DS1307& clock, BME280& sensor, SoftwareSerial& gps, Mode& currentMode, unsigned long& startTimer, int& fileNumber) {
+    int logIntervalMin = currentMode == MODE_ECONOMIQUE ? config.logInterval.value*2 : config.logInterval.value;
+    if(millis() - startTimer >= logIntervalMin*60000) {
+        clock.getTime();
+        String donnees =
+            String(clock.hour) + ":" + String(clock.minute) + ":" + String(clock.second) + ";" +
+            String(sensor.getTemperature()) + ";" +
+            String(sensor.getPressure()) + ";" +
+            String(sensor.getHumidity()) + ";" +
+            String(analogRead(A0)) + ";";
 
-void acquerirDonnees() {
-    int lightData = analogRead(A0);
-}
+        if(currentMode != MODE_ECONOMIQUE) {
+            if (gps.available()) {
+                String nmeaSentence = gps.readStringUntil('\n');
+                Serial.print(nmeaSentence);
+                if (nmeaSentence.startsWith("$GNRMC")) {
+                    char delimiter = ',';
+                    String elements[20];
 
-  // Acquisition données capteur
+                    int index = 0;
+                    for (int i = 0; i < nmeaSentence.length(); i++) {
+                        if (nmeaSentence[i] == delimiter) {
+                            index++;
+                        } else {
+                            elements[index] += nmeaSentence[i];
+                        }
+                    }
 
-void clearBufferArray() {
-    for (int i=0; i<count;i++) {
-        buffer[i]=NULL;
-    }
-}
-
-void acquisition_donnee_gps() {
-    SoftwareSerial SoftSerial(2, 3);
-    unsigned char buffer[64];
-    int count=0;
-
-    if (SoftSerial.available()) {
-        while(SoftSerial.available()) {
-            buffer[count++]=SoftSerial.read();
-            if(count == 64)break;
+                    String latitude = elements[3];
+                    String longitude = elements[5];
+                    donnees += latitude + ";" + longitude + ";";
+                    startTimer = millis();
+                    return donnees;
+                }
+            }
         }
-        Serial.write(reinterpret_cast<const char *>(buffer), count);
-        clearBufferArray();
-        count = 0;
+
+        startTimer = millis();
+        if(currentMode == MODE_MAINTENANCE) {
+            Serial.print(donnees);
+        } else {
+            sauvegarderDonnees(donnees, clock, config, fileNumber);
+        }
+        return donnees;
     }
-
-    if (Serial.available()) {
-        SoftSerial.write(Serial.read());
-    }
-}
-
-void acquisition_donnee_temperature() {
-
+    return "";
 }
