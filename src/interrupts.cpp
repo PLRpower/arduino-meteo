@@ -1,22 +1,21 @@
 #include "main.h"
 
-// Couleurs
-bool useColor1 = true; // Indique la couleur en cours
-bool longerState = false; // Pour suivre l'état de longer dans l'ISR
+bool useColor1 = true;
+bool longerState = false;
 
 void initBlinkInterrupt() {
     noInterrupts();
     TCCR1A = 0;
     TCCR1B = 0;
     TCNT1  = 0;
-    OCR1A = (62500 * 0.5) - 1; // Configuration du comparateur
-    TCCR1B |= (1 << WGM12) | (1 << CS12); // CTC mode avec prescaler 256
-    TIMSK1 |= (1 << OCIE1A); // Activer l'interruption
-    interrupts(); // Réactiver les interruptions
+    OCR1A = (62500 * 0.5) - 1;
+    TCCR1B |= (1 << WGM12) | (1 << CS12);
+    TIMSK1 |= (1 << OCIE1A);
+    interrupts();
 }
 
 void stopBlinkInterrupt() {
-    TIMSK1 &= ~(1 << OCIE1A); // Désactiver l'interruption
+    TIMSK1 &= ~(1 << OCIE1A);
 }
 
 ISR(TIMER1_COMPA_vect) {
@@ -28,7 +27,6 @@ ISR(TIMER1_COMPA_vect) {
         longerState = false;
     }
 }
-
 
 void redButtonInterrupt() {
     bool isPressed = digitalRead(redButton.pin) == LOW;

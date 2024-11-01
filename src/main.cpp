@@ -73,18 +73,17 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(redButton.pin), redButtonInterrupt, CHANGE);
     attachInterrupt(digitalPinToInterrupt(greenButton.pin), greenButtonInterrupt, CHANGE);
 
-    initBlinkInterrupt();
-    delay(5000);
-    stopBlinkInterrupt();
-    delay(2000);
-
+    if(start()) {
+        Serial.println(F("Début du mode configuration"));
+        setMode(CONFIG);
+    } else {
+        setMode(STANDARD);
+    }
 
     EEPROM.get(0, config);
     gps.begin(9600);
     sensor.init();
-
-    // Vérifier si l'horloge est bien initialisée
-
+    clock.begin();
     if(!SD.begin(4)) {
         Serial.println(F("Erreur : LECTURE/ECRITURE"));
     }
