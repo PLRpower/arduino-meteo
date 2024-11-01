@@ -1,58 +1,116 @@
 #include <Arduino.h>
 #include <EEPROM.h>
-#include <Seeed_BME280.h>
+#include <ChainableLED.h>
 #include <DS1307.h>
+#include <Seeed_BME280.h>
 #include <SoftwareSerial.h>
 #include <SD.h>
-#include "variables.h"
 
-Button redButton = {false, false, 0, 2};
-Button greenButton = {false, false, 0, 3};
+#include "main.h"
+
+Button redButton = {false, 0, 2};
+Button greenButton = {false, 0, 3};
 ChainableLED led(7, 8, 1);
-SoftwareSerial gps(5, 6);
+Config config;
 DS1307 clock;
 BME280 sensor;
-Mode currentMode;
-Config config;
-
-int fileNumber = 0;
+SoftwareSerial gps(5, 6);
 unsigned long startTimer = millis();
+Color blinkColor1 = GREEN;
+Color blinkColor2 = OFF;
+bool longerBlink = false;
+
+void sauvegarderDonnees(const char* data) {
+    clock.getTime();
+    char fileName[14];
+    sprintf(fileName, "20%02d%02d_0.LOG", clock.month, clock.dayOfMonth);
+    File file = SD.open(fileName, FILE_WRITE);
+    if (file) {
+        if (file.size() + sizeof(data) > config.fileMaxSize.value) {
+            file.close();
+            char newFile[14];
+            int fileNumber = 0;
+            do {
+                sprintf(newFile, "20%02d%02d_%d.LOG", clock.month, clock.dayOfMonth, fileNumber++);
+            } while (SD.exists(newFile));
+        }
+        file.println(data);
+        file.close();
+    } else {
+        initBlinkInterrupt();
+    }
+}
+
+void acquerirDonnees(char* donnees, size_t taille) {
+    clock.getTime();
+    int hour = clock.hour;
+    int minute = clock.minute;
+    int second = clock.second;
+    float temperture = sensor.getTemperature();
+    float humidity = sensor.getHumidity();
+    float pressure = sensor.getPressure();
+    if(currentMode != ECONOMIQUE) {
+        gps.read();
+    }
+}
+
+bool start() {
+    initBlinkInterrupt();
+    unsigned long millisStart = millis();
+    while (millis() - millisStart < 5000) {
+        if(redButton.state) {
+            stopBlinkInterrupt();
+            return true;
+        }
+    }
+    stopBlinkInterrupt();
+    return false;
+}
 
 void setup() {
-    EEPROM.get(0, config);
     Serial.begin(9600);
+    Serial.setTimeout(30000);
+    attachInterrupt(digitalPinToInterrupt(redButton.pin), redButtonInterrupt, CHANGE);
+    attachInterrupt(digitalPinToInterrupt(greenButton.pin), greenButtonInterrupt, CHANGE);
+
+    initBlinkInterrupt();
+    delay(5000);
+    stopBlinkInterrupt();
+    delay(2000);
+
+
+    EEPROM.get(0, config);
     gps.begin(9600);
-    clock.begin();
-    SD.begin(4);
-    led.init();
     sensor.init();
-    pinMode(redButton.pin, INPUT_PULLUP);
-    pinMode(greenButton.pin, INPUT_PULLUP);
 
-    if(demarrage(redButton, led)) {
-        setModeConfig(led, config, clock);
+    // Vérifier si l'horloge est bien initialisée
+
+    if(!SD.begin(4)) {
+        Serial.println(F("Erreur : LECTURE/ECRITURE"));
     }
-
-    setModeStandard(led, currentMode);
 }
 
 void loop() {
-    handleButton(redButton);
-    handleButton(greenButton);
-
-    if (redButton.pressed5s) {
-        currentMode == MODE_MAINTENANCE ? setPreviousMode(led, currentMode) : setModeMaintenance(led, currentMode);
-        resetButton(redButton);
-    } else if (greenButton.pressed5s) {
-        if (currentMode == MODE_ECONOMIQUE) {
-            setModeStandard(led, currentMode);
-        } else if (currentMode == MODE_STANDARD) {
-            setModeEconomique(led, currentMode);
+    if (currentMode == CONFIG) {
+        checkUserInput();
+    } else {
+        if(redButton.state && millis() - redButton.pressStart > 5000) {  // Si le bouton est appuyé depuis plus de 5 secondes
+            setMode(currentMode == MAINTENANCE ? previousMode : MAINTENANCE);
+            redButton.state = false;
+        } else if(greenButton.state && millis() - greenButton.pressStart > 5000) {
+            setMode(currentMode == ECONOMIQUE ? STANDARD : ECONOMIQUE);
+            greenButton.state = false;
         }
-        resetButton(greenButton);
+
+        int interval = currentMode == ECONOMIQUE ? config.logInterval.value * 2 : config.logInterval.value;
+        if (millis() - startTimer >= interval * 1000) {
+            char data[50];
+            acquerirDonnees(data, sizeof(data));
+            if(currentMode == MAINTENANCE) {
+                Serial.println(data);
+            } else {
+                sauvegarderDonnees(data);
+            }
+        }
     }
-
-    String data = acquerirDonnees(config, clock, sensor, gps, currentMode, startTimer, fileNumber);
-
-    Serial.print(data);
 }
