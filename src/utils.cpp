@@ -1,8 +1,5 @@
 #include "main.h"
 
-Mode currentMode = STANDARD;
-Mode previousMode;
-
 void setLedColor(Color color) {
     switch (color) {
         case GREEN: led.setColorRGB(0, 0, 255, 0); break;
@@ -16,12 +13,26 @@ void setLedColor(Color color) {
 }
 
 void setMode(Mode mode) {
+    // Associer chaque mode à une couleur dans un tableau
+    const Color modeColors[4] = {GREEN, BLUE, ORANGE, YELLOW};
+
     previousMode = currentMode;
     currentMode = mode;
-    switch (mode) {
-        case STANDARD: led.setColorRGB(0, 0, 255, 0); break;
-        case ECONOMIQUE: led.setColorRGB(0, 0, 0, 255); break;
-        case MAINTENANCE: led.setColorRGB(0, 255, 100, 0); break;
-        case CONFIG: led.setColorRGB(0, 255, 255, 0); break;
+    setLedColor(modeColors[mode]);
+}
+
+void checkErrors() {
+    const Color errorColors[6] = {BLUE, YELLOW, GREEN, GREEN, WHITE, WHITE};
+
+    for (int i = 0; i < 6; ++i) {
+        if (errors[i]) {
+            blinkColor1 = RED;
+            blinkColor2 = errorColors[i];
+            longerBlink = i == 3 || i == 5;
+            initBlinkInterrupt();
+            return;
+        }
     }
+
+    stopBlinkInterrupt();
 }

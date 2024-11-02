@@ -15,38 +15,47 @@ Config config;
 DS1307 clock;
 BME280 sensor;
 SoftwareSerial gps(5, 6);
-unsigned long startTimer = millis();
+Mode currentMode = STANDARD;
+Mode previousMode;
 Color blinkColor1 = GREEN;
 Color blinkColor2 = OFF;
+unsigned long startTimer = millis();
 bool longerBlink = false;
+bool errors[6] = {false};
 
 void sauvegarderDonnees(const char* data) {
     clock.getTime();
-    char fileName[14];
-    sprintf(fileName, "20%02d%02d_0.LOG", clock.month, clock.dayOfMonth);
+    char fileName[14] = "20";
+    strcat(fileName, (char*)clock.month);
+    strcat(fileName, (char*)clock.dayOfMonth);
+    strcat(fileName, "_0.LOG");
     File file = SD.open(fileName, FILE_WRITE);
     if (file) {
+        errors[5] = false;
         if (file.size() + sizeof(data) > config.fileMaxSize.value) {
             file.close();
             char newFile[14];
             int fileNumber = 0;
-            do {
+            while (SD.exists(newFile)) {
+                strcat(fileName, (char*)clock.month);
+                strcat(fileName, (char*)clock.dayOfMonth);
+                strcat(fileName, "_");
                 sprintf(newFile, "20%02d%02d_%d.LOG", clock.month, clock.dayOfMonth, fileNumber++);
-            } while (SD.exists(newFile));
+            }
         }
         file.println(data);
         file.close();
     } else {
-        initBlinkInterrupt();
+        errors[5] = true;
     }
 }
 
-void acquerirDonnees(char* donnees, size_t taille) {
+void acquerirDonnees(char *donnees, size_t taille) {
     clock.getTime();
     int hour = clock.hour;
     int minute = clock.minute;
     int second = clock.second;
-    float temperture = sensor.getTemperature();
+    float temperature = sensor.getTemperature();
     float humidity = sensor.getHumidity();
     float pressure = sensor.getPressure();
     if(currentMode != ECONOMIQUE) {
@@ -90,6 +99,8 @@ void setup() {
 }
 
 void loop() {
+    checkErrors();
+
     if (currentMode == CONFIG) {
         checkUserInput();
     } else {
@@ -97,12 +108,15 @@ void loop() {
             setMode(currentMode == MAINTENANCE ? previousMode : MAINTENANCE);
             redButton.state = false;
         } else if(greenButton.state && millis() - greenButton.pressStart > 5000) {
-            setMode(currentMode == ECONOMIQUE ? STANDARD : ECONOMIQUE);
+            if(currentMode != MAINTENANCE) {
+                setMode(currentMode == ECONOMIQUE ? STANDARD : ECONOMIQUE);
+            }
             greenButton.state = false;
         }
 
         int interval = currentMode == ECONOMIQUE ? config.logInterval.value * 2 : config.logInterval.value;
         if (millis() - startTimer >= interval * 1000) {
+            startTimer = millis();
             char data[50];
             acquerirDonnees(data, sizeof(data));
             if(currentMode == MAINTENANCE) {

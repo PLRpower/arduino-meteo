@@ -1,6 +1,8 @@
 #include <EEPROM.h>
 #include "main.h"
 
+const char daysOfWeek[7][4] PROGMEM = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
+
 void setParameter(Parameter &param, int newValue) {
     if (newValue >= param.minValue && newValue <= param.maxValue) {
         param.value = newValue;
@@ -85,7 +87,6 @@ void checkUserInput() {
                 Serial.println(F("Erreur : DONNEES"));
             }
         } else if (!strcmp_P(command, PSTR("DAY")) && value) {
-            const char daysOfWeek[7][4] PROGMEM = {"SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"};
             int dayIndex = -1;
 
             for (int i = 0; i < 7; i++) {

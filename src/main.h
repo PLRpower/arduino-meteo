@@ -38,6 +38,7 @@ struct Button {
 
 enum Mode { STANDARD, ECONOMIQUE, MAINTENANCE, CONFIG };
 enum Color { GREEN, RED, BLUE, YELLOW, ORANGE, WHITE, OFF };
+enum Error { RTC, GPS, SENSOR, DATA, SD_FULL, SD_RW };
 
 extern Color blinkColor1;
 extern Color blinkColor2;
@@ -49,6 +50,7 @@ extern Button greenButton;
 extern Mode currentMode;
 extern Mode previousMode;
 extern bool longerBlink;
+extern bool errors[6];
 
 void checkUserInput();
 void initBlinkInterrupt();
@@ -57,5 +59,6 @@ void greenButtonInterrupt();
 void redButtonInterrupt();
 void setMode(Mode mode);
 void setLedColor(Color color);
+void checkErrors();
 
 #endif //MAIN_H
