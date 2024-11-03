@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <DS1307.h>
 #include <ChainableLED.h>
+#include <Seeed_BME280.h>
+#include <SoftwareSerial.h>
 
 
 struct Parameter {
@@ -15,7 +17,7 @@ struct Parameter {
 struct Config {
     Parameter logInterval = {10, 1, 60};  // Interval de log en minutes
     Parameter fileMaxSize = {4096, 1024, 16384};  // Taille maximale d'un fichier en octets
-    Parameter timeout = {30, 10, 120};  // Timeout en secondes
+    Parameter timeout = {30, 10, 120};  // Timeout en secondes pour le GPS
     Parameter lumin = {1, 0, 1};  // Log de la luminosité
     Parameter luminLow = {255, 0, 1023};  // Seuil bas de luminosité
     Parameter luminHigh = {768, 0, 1023};
@@ -43,6 +45,7 @@ struct MeteoData {
     float latitude, longitude;
 };
 
+enum GpsState { WAITING, LOADING, FINISHED };
 enum Mode { STANDARD, ECONOMIQUE, MAINTENANCE, CONFIG };
 enum Color { GREEN, RED, BLUE, YELLOW, ORANGE, WHITE, OFF };
 enum Error { RTC, GPS, SENSOR, DATA, SD_FULL, SD_RW };
@@ -60,6 +63,9 @@ extern Mode currentMode;
 extern Mode previousMode;
 extern bool longerBlink;
 extern bool errors[6];
+extern GpsState gpsState;
+extern MeteoData data;
+extern unsigned long gpsTimer;
 
 void checkUserInput();
 void initBlinkInterrupt();
@@ -69,5 +75,7 @@ void redButtonInterrupt();
 void setMode(Mode mode);
 void setLedColor(Color color);
 void checkErrors();
+MeteoData acquerirDonnees();
+void acquerirGPS();
 
 #endif //MAIN_H

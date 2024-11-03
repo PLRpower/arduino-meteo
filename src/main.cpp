@@ -20,47 +20,55 @@ Mode previousMode;
 Color blinkColor1 = GREEN;
 Color blinkColor2 = OFF;
 SdFat32 SD;
+MeteoData data;
+unsigned long gpsTimer;
 unsigned long startTimer = millis();
 bool longerBlink = false;
 bool errors[6] = {false};
 
-
 void sauvegarderDonnees(const MeteoData &data) {
     clock.getTime();
-    char fileName[14];
-    sprintf(fileName, "20%02d%02d_0.LOG", clock.month, clock.dayOfMonth);
-    File32 file = SD.open(fileName, FILE_WRITE);
-    if (file) {
-        if(file.size() + sizeof(data) > config.fileMaxSize.value) {
-            int fileIndex = 1;
-            char newFileName[14];
-            do {
-                sprintf(newFileName, "20%02d%02d_%d.LOG", clock.month, clock.dayOfMonth, fileIndex++);
-            } while (SD.exists(newFileName)); // Incrémente jusqu'à trouver un nom non existant
+    char fileName[] = "20xxxx_0.LOG";
+    fileName[2] = '0' + clock.month / 10;
+    fileName[3] = '0' + clock.month % 10;
+    fileName[4] = '0' + clock.dayOfMonth / 10;
+    fileName[5] = '0' + clock.dayOfMonth % 10;
 
-            File newFile = SD.open(newFileName, FILE_WRITE);
-            if (newFile) {
-                // Copie des données de oldFile vers newFile
-                while (file.available()) {
-                    newFile.write(file.read());
-                }
-                newFile.close();
+    File32 file = SD.open(fileName, FILE_WRITE);
+    if (file && (file.size() + sizeof(data) > config.fileMaxSize.value)) {
+        int fileIndex = 1;
+        do {
+            fileName[7] = '0' + fileIndex++;
+        } while (SD.exists(fileName));
+
+        File newFile = SD.open(fileName, FILE_WRITE);
+        if (newFile) {
+            char buffer[32];
+            while (file.available()) {
+                int bytesRead = file.readBytes(buffer, sizeof(buffer));
+                newFile.write(buffer, bytesRead);
             }
-            file.close();
-            SD.remove(fileName);
-            file = SD.open(fileName, FILE_WRITE);
+            newFile.close();
         }
-        file.print(data.hour);
-        file.print(':'); file.print(data.minute);
-        file.print(':'); file.print(data.second);
-        file.print(';'); file.print(data.temperature);
-        file.print(';'); file.print(data.humidity);
-        file.print(';'); file.print(data.pressure);
-        file.print(';'); file.print(data.light);
-        file.print(';'); file.print(data.latitude);
-        file.print(';'); file.println(data.longitude);
         file.close();
+        SD.remove(fileName);
+        file = SD.open(fileName, FILE_WRITE);
     }
+
+    file.print(data.hour);
+    file.print(':'); file.print(data.minute);
+    file.print(':'); file.print(data.second);
+    file.print(';'); file.print(data.temperature);
+    file.print(';'); file.print(data.humidity);
+    file.print(';'); file.print(data.pressure);
+    file.print(';'); file.print(data.light); file.print(';');
+
+    if (data.latitude != 0.0 && data.longitude != 0.0) {
+        file.print(data.latitude); file.print(';'); file.println(data.longitude);
+    } else {
+        file.println(F("NA;NA;"));
+    }
+    file.close();
 }
 
 bool starting() {
@@ -117,20 +125,31 @@ void loop() {
 
         const unsigned int interval = config.logInterval.value * 1000 * (currentMode == ECONOMIQUE ? 2 : 1);
         if (millis() - startTimer >= interval) {
-            startTimer = millis();
-            const MeteoData data = acquerirDonnees();
-            if(currentMode == MAINTENANCE) {
-                Serial.print(F("Heure : ")); Serial.print(data.hour);
-                Serial.print(':'); Serial.print(data.minute);
-                Serial.print(':'); Serial.print(data.second);
-                Serial.print(F(" | Température : ")); Serial.print(data.temperature);
-                Serial.print(F("°C | Humidité : ")); Serial.print(data.humidity);
-                Serial.print(F("% | Pression : ")); Serial.print(data.pressure);
-                Serial.print(F("Pa | Luminosité : ")); Serial.print(data.light);
-                Serial.print(F(" | Latitude : ")); Serial.print(data.latitude);
-                Serial.print(F(" | Longitude : ")); Serial.println(data.longitude);
+            if(gpsState == WAITING) {
+                data = acquerirDonnees();
+                gpsTimer = millis();
+            } else if (gpsState == LOADING) {
+                acquerirGPS();
             } else {
-                sauvegarderDonnees(data);
+                gpsState = WAITING;
+                startTimer = millis();
+                if(currentMode == MAINTENANCE) {
+                    Serial.print(F("Heure : ")); Serial.print(data.hour);
+                    Serial.print(':'); Serial.print(data.minute);
+                    Serial.print(':'); Serial.print(data.second);
+                    Serial.print(F(" | Température : ")); Serial.print(data.temperature);
+                    Serial.print(F("°C | Humidité : ")); Serial.print(data.humidity);
+                    Serial.print(F("% | Pression : ")); Serial.print(data.pressure);
+                    Serial.print(F("Pa | Luminosité : ")); Serial.print(data.light);
+                    if(data.latitude == NULL || data.longitude == NULL) {
+                        Serial.println(F(" | Latitude : NA | Longitude : NA"));
+                    } else {
+                        Serial.print(F(" | Latitude : ")); Serial.print(data.latitude);
+                        Serial.print(F(" | Longitude : ")); Serial.println(data.longitude);
+                    }
+                } else {
+                    sauvegarderDonnees(data);
+                }
             }
         }
     }
