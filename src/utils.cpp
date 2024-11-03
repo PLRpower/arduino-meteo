@@ -6,19 +6,16 @@ void setLedColor(Color color) {
         case RED: led.setColorRGB(0, 255, 0, 0); break;
         case BLUE: led.setColorRGB(0, 0, 0, 255); break;
         case YELLOW: led.setColorRGB(0, 255, 255, 0); break;
-        case ORANGE: led.setColorRGB(0, 255, 165, 0); break;
+        case ORANGE: led.setColorRGB(0, 255, 100, 0); break;
         case WHITE: led.setColorRGB(0, 255, 255, 255); break;
         case OFF: led.setColorRGB(0, 0, 0, 0); break;
     }
 }
 
 void setMode(Mode mode) {
-    // Associer chaque mode à une couleur dans un tableau
     const Color modeColors[4] = {GREEN, BLUE, ORANGE, YELLOW};
-
-    previousMode = currentMode;
-    currentMode = mode;
     setLedColor(modeColors[mode]);
+    currentMode = mode;
 }
 
 void checkErrors() {

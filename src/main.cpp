@@ -4,7 +4,7 @@
 #include <DS1307.h>
 #include <Seeed_BME280.h>
 #include <SoftwareSerial.h>
-#include <SD.h>
+#include <SdFat.h>
 
 #include "main.h"
 
@@ -19,54 +19,54 @@ Mode currentMode = STANDARD;
 Mode previousMode;
 Color blinkColor1 = GREEN;
 Color blinkColor2 = OFF;
+SdFat32 SD;
 unsigned long startTimer = millis();
 bool longerBlink = false;
 bool errors[6] = {false};
 
-void sauvegarderDonnees(const char* data) {
+
+void sauvegarderDonnees(const MeteoData &data) {
     clock.getTime();
-    char fileName[14] = "20";
-    strcat(fileName, (char*)clock.month);
-    strcat(fileName, (char*)clock.dayOfMonth);
-    strcat(fileName, "_0.LOG");
-    File file = SD.open(fileName, FILE_WRITE);
+    char fileName[14];
+    sprintf(fileName, "20%02d%02d_0.LOG", clock.month, clock.dayOfMonth);
+    File32 file = SD.open(fileName, FILE_WRITE);
     if (file) {
-        errors[5] = false;
-        if (file.size() + sizeof(data) > config.fileMaxSize.value) {
-            file.close();
-            char newFile[14];
-            int fileNumber = 0;
-            while (SD.exists(newFile)) {
-                strcat(fileName, (char*)clock.month);
-                strcat(fileName, (char*)clock.dayOfMonth);
-                strcat(fileName, "_");
-                sprintf(newFile, "20%02d%02d_%d.LOG", clock.month, clock.dayOfMonth, fileNumber++);
+        if(file.size() + sizeof(data) > config.fileMaxSize.value) {
+            int fileIndex = 1;
+            char newFileName[14];
+            do {
+                sprintf(newFileName, "20%02d%02d_%d.LOG", clock.month, clock.dayOfMonth, fileIndex++);
+            } while (SD.exists(newFileName)); // Incrémente jusqu'à trouver un nom non existant
+
+            File newFile = SD.open(newFileName, FILE_WRITE);
+            if (newFile) {
+                // Copie des données de oldFile vers newFile
+                while (file.available()) {
+                    newFile.write(file.read());
+                }
+                newFile.close();
             }
+            file.close();
+            SD.remove(fileName);
+            file = SD.open(fileName, FILE_WRITE);
         }
-        file.println(data);
+        file.print(data.hour);
+        file.print(':'); file.print(data.minute);
+        file.print(':'); file.print(data.second);
+        file.print(';'); file.print(data.temperature);
+        file.print(';'); file.print(data.humidity);
+        file.print(';'); file.print(data.pressure);
+        file.print(';'); file.print(data.light);
+        file.print(';'); file.print(data.latitude);
+        file.print(';'); file.println(data.longitude);
         file.close();
-    } else {
-        errors[5] = true;
     }
 }
 
-void acquerirDonnees(char *donnees, size_t taille) {
-    clock.getTime();
-    int hour = clock.hour;
-    int minute = clock.minute;
-    int second = clock.second;
-    float temperature = sensor.getTemperature();
-    float humidity = sensor.getHumidity();
-    float pressure = sensor.getPressure();
-    if(currentMode != ECONOMIQUE) {
-        gps.read();
-    }
-}
-
-bool start() {
+bool starting() {
     initBlinkInterrupt();
-    unsigned long millisStart = millis();
-    while (millis() - millisStart < 5000) {
+    unsigned long startTimer = millis();
+    while (millis() - startTimer < 5000) {
         if(redButton.state) {
             stopBlinkInterrupt();
             return true;
@@ -82,7 +82,7 @@ void setup() {
     attachInterrupt(digitalPinToInterrupt(redButton.pin), redButtonInterrupt, CHANGE);
     attachInterrupt(digitalPinToInterrupt(greenButton.pin), greenButtonInterrupt, CHANGE);
 
-    if(start()) {
+    if(starting()) {
         Serial.println(F("Début du mode configuration"));
         setMode(CONFIG);
     } else {
@@ -93,19 +93,20 @@ void setup() {
     gps.begin(9600);
     sensor.init();
     clock.begin();
-    if(!SD.begin(4)) {
-        Serial.println(F("Erreur : LECTURE/ECRITURE"));
-    }
+    SD.begin(4);
 }
 
 void loop() {
-    checkErrors();
-
     if (currentMode == CONFIG) {
         checkUserInput();
     } else {
         if(redButton.state && millis() - redButton.pressStart > 5000) {  // Si le bouton est appuyé depuis plus de 5 secondes
-            setMode(currentMode == MAINTENANCE ? previousMode : MAINTENANCE);
+            if(currentMode == MAINTENANCE) {
+                setMode(previousMode);
+            } else {
+                previousMode = currentMode;
+                setMode(MAINTENANCE);
+            }
             redButton.state = false;
         } else if(greenButton.state && millis() - greenButton.pressStart > 5000) {
             if(currentMode != MAINTENANCE) {
@@ -114,13 +115,20 @@ void loop() {
             greenButton.state = false;
         }
 
-        int interval = currentMode == ECONOMIQUE ? config.logInterval.value * 2 : config.logInterval.value;
-        if (millis() - startTimer >= interval * 1000) {
+        const unsigned int interval = config.logInterval.value * 1000 * (currentMode == ECONOMIQUE ? 2 : 1);
+        if (millis() - startTimer >= interval) {
             startTimer = millis();
-            char data[50];
-            acquerirDonnees(data, sizeof(data));
+            const MeteoData data = acquerirDonnees();
             if(currentMode == MAINTENANCE) {
-                Serial.println(data);
+                Serial.print(F("Heure : ")); Serial.print(data.hour);
+                Serial.print(':'); Serial.print(data.minute);
+                Serial.print(':'); Serial.print(data.second);
+                Serial.print(F(" | Température : ")); Serial.print(data.temperature);
+                Serial.print(F("°C | Humidité : ")); Serial.print(data.humidity);
+                Serial.print(F("% | Pression : ")); Serial.print(data.pressure);
+                Serial.print(F("Pa | Luminosité : ")); Serial.print(data.light);
+                Serial.print(F(" | Latitude : ")); Serial.print(data.latitude);
+                Serial.print(F(" | Longitude : ")); Serial.println(data.longitude);
             } else {
                 sauvegarderDonnees(data);
             }

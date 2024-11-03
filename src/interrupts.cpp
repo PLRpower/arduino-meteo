@@ -7,14 +7,12 @@ bool alreadyInit = false;
 void initBlinkInterrupt() {
     if(!alreadyInit) {
         longerState = false;
-        noInterrupts();
         TCCR1A = 0;
         TCCR1B = 0;
         TCNT1  = 0;
         OCR1A = (62500 * 0.5) - 1;
         TCCR1B |= (1 << WGM12) | (1 << CS12);
         TIMSK1 |= (1 << OCIE1A);
-        interrupts();
         alreadyInit = true;
     }
 }
