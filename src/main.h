@@ -66,7 +66,6 @@ extern SdFat32 SD;
 extern Color blinkColor1;  // Couleur 1 pour le clignotement
 extern Color blinkColor2;  // Couleur 2 pour le clignotement
 extern Config config;  // Configuration, avec tous les paramètres
-extern Config config;  // Configuration, avec tous les paramètres
 extern Button redButton;  // Bouton rouge
 extern Button greenButton;  // Bouton vert
 extern Mode currentMode;  // Mode actuel

@@ -47,7 +47,7 @@ void loop() {
 
     } else {  // Sinon
         handleButtonPresses();  // Traitement des pressions de boutons
-        const unsigned long interval = config.logInterval.value * 60000 * (currentMode == ECONOMIQUE ? 2 : 1);  // Calcul de l'intervalle de temps entre chaque enregistrement
+        const unsigned long interval = config.logInterval.value * 1000 * (currentMode == ECONOMIQUE ? 2 : 1);  // Calcul de l'intervalle de temps entre chaque enregistrement
         if (millis() - startTimer >= interval) {  // Si l'intervalle est écoulé
             processData();  // Traitement des données (acquisition + enregistrement/affichage)
         }

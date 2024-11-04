@@ -1,6 +1,6 @@
 #include "main.h"
 
-// Fonction pour acquérir les données météo
+// Fonction pour acquérir les données GPS
 void acquireGPS() {
     if (millis() - gpsTimer > config.timeout.value * 1000) {  // Si le timeout est atteint
         gpsState = FINISHED;  // Fin de l'acquisition
